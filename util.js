@@ -24,6 +24,14 @@ console.log();
 
 exports.log = (msg) => console.log(`${new Date().toISOString()} ${msg}`);
 
+exports.isDocker = () => {
+    try {
+        return require("fs").existsSync("/.dockerenv");
+    } catch {
+        return false;
+    }
+};
+
 exports.normalizeModsList = (modsString) => {
     if (!modsString) return [];
     return modsString
