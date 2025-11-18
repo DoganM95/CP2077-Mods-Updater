@@ -9,5 +9,10 @@
   "keywords": [],
   "author": "DoganM95",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "axios": "^1.13.2",
+    "dotenv": "^17.2.3"
+  }
 }
