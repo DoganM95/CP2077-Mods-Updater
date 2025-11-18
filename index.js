@@ -6,8 +6,7 @@ const util = require("./util");
 const GAME_DIR = process.env.GAME_DIR || "/game";
 const STATE_DIR = process.env.STATE_DIR || "/state";
 const TMP_DIR = process.env.TMP_DIR || "/tmp";
-const POLL_INTERVAL = process.env.POLL_INTERVAL || Number(process.env.POLL_INTERVAL || 3600);
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
+const POLL_INTERVAL = Number(process.env.POLL_INTERVAL || 3600);
 
 // TODO: add detection whether game is running or not by looking for its executable in processes
 

@@ -1,96 +1,67 @@
 require("dotenv").config({ path: __dirname + "/.env" });
 require("dotenv").config({ path: __dirname + "/private.env" });
+
 const fs = require("node:fs");
 const path = require("node:path");
 const axios = require("axios");
 const AdmZip = require("adm-zip");
 
+const GAME_DIR = process.env.GAME_DIR || "/game";
+const STATE_DIR = process.env.STATE_DIR || "/state";
+const TMP_DIR = process.env.TMP_DIR || "/tmp";
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
+
+console.log("ENVIRONMENT:");
+console.log("GAME_DIR    →", GAME_DIR);
+console.log("STATE_DIR   →", STATE_DIR);
+console.log("TMP_DIR     →", TMP_DIR);
+console.log("GITHUB_TOKEN →", GITHUB_TOKEN ? "present" : "not set");
+console.log();
+
 exports.log = (msg) => console.log(`${new Date().toISOString()} ${msg}`);
 
-exports.runOnce = async () => {
-    const mods = exports.normalizeModsList(process.env.MODS);
-    for (const mod of mods) {
-        await exports.processTool(mod.id, mod.repo, mod.relativePath);
-        await new Promise((r) => setTimeout(r, 1500));
-    }
-};
-
-exports.normalizeVersion = (v) => {
-    if (!v) return "";
-    return v.trim().replace(/^v/i, "");
-};
-
 exports.normalizeModsList = (modsString) => {
-    const modStrings = modsString.split("\n");
-    const modsArray = modStrings.map((line) => {
-        return {
-            id: line.split(",")[0],
-            repo: line.split(",")[1],
-            relativePath: line.split(",")[2],
-        };
-    });
-    return modsArray;
+    if (!modsString) return [];
+    return modsString
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter((l) => l)
+        .map((line) => {
+            const parts = line.split(",").map((p) => p.trim());
+            if (parts.length < 3) return null;
+            const rawPath = parts.slice(2).join(",").trim();
+            const cleaned = rawPath
+                .replace(/[\r\n\t\s]/g, "")
+                .replace(/^[.\\\/]+/, "")
+                .replace(/[.\\\/]+$/, "");
+            const isRoot = !cleaned || cleaned === "." || cleaned === "";
+            return {
+                id: parts[0],
+                repo: parts[1],
+                relativePath: isRoot ? "" : cleaned,
+            };
+        })
+        .filter(Boolean);
 };
 
-exports.isRemoteNewer = (localVersion, remoteVersion) => {
-    const lv = exports.normalizeVersion(localVersion);
-    const rv = exports.normalizeVersion(remoteVersion);
-    if (!lv) return true;
-    if (lv === rv) return false;
-    const sorted = [lv, rv].sort((a, b) => {
-        try {
-            return a.localeCompare(b, undefined, { numeric: true });
-        } catch {
-            return a < b ? -1 : 1;
-        }
-    });
-    return sorted[1] === rv;
-};
-
-exports.getLatestRelease = async (repo) => {
-    const api = `https://api.github.com/repos/${repo}/releases/latest`;
-    const headers = {
-        Accept: "application/vnd.github+json",
-        "User-Agent": "nodejs-updater",
-    };
-    if (process.env.GITHUB_TOKEN) headers["Authorization"] = `Bearer ${process.env.GITHUB_TOKEN}`;
-    let json = null;
-    try {
-        const res = await axios.get(api, { headers, timeout: 15000 });
-        json = res.data;
-    } catch (err) {
-        console.error("GitHub request failed:", err.response?.status, err.message);
-        return { tag: null, zipUrl: null };
+function getModSourceFolder(extractDir) {
+    const items = fs.readdirSync(extractDir);
+    if (items.length === 1) {
+        const first = items[0];
+        const full = path.join(extractDir, first);
+        if (fs.statSync(full).isDirectory() && !first.startsWith(".") && !first.toLowerCase().includes("dist")) return full;
     }
-    const tag = json.tag_name || json.name || "";
-    let zipUrl = null;
-    const zipAsset = (json.assets || []).find((a) => a.browser_download_url?.endsWith(".zip"));
-    if (zipAsset) zipUrl = zipAsset.browser_download_url;
-    else if (json.zipball_url) zipUrl = json.zipball_url;
-    return { tag, zipUrl };
+    return extractDir; // Fallback: content is already at root of ZIP
+}
+
+// Recursive mkdir -p and copy
+exports.createDirRecursive = (dir) => {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 };
 
-exports.downloadFile = async (url, target) => {
-    const headers = {};
-    if (process.env.GITHUB_TOKEN) headers["Authorization"] = `token ${process.env.GITHUB_TOKEN}`;
-    const res = await axios.get(url, { responseType: "arraybuffer", headers });
-    fs.writeFileSync(target, res.data);
-};
-
-exports.unzipToTemp = async (zipFile, tempDir) => {
-    const zip = new AdmZip(zipFile);
-    zip.extractAllTo(tempDir, true);
-};
-
-// mkdir -p command
-exports.createDirRecursive = (dirPath) => {
-    if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
-};
-
-// cp -a command (copy files recursively)
 exports.copyRecursive = (src, dest) => {
     const entries = fs.readdirSync(src, { withFileTypes: true });
-    entries.forEach((entry) => {
+    for (const entry of entries) {
         const srcPath = path.join(src, entry.name);
         const destPath = path.join(dest, entry.name);
         if (entry.isDirectory()) {
@@ -99,67 +70,89 @@ exports.copyRecursive = (src, dest) => {
         } else {
             fs.copyFileSync(srcPath, destPath);
         }
-    });
-};
-
-// You can now use this function to replace your shell command:
-exports.mergeInto = async (src, dest) => {
-    exports.createDirRecursive(dest);
-    exports.copyRecursive(src, dest);
-};
-
-// Process a single tool, e.g. ArchiveXL
-exports.processTool = async (id, repo, relativePath) => {
-    exports.log("-----");
-    const installPath = relativePath.startsWith("/") ? relativePath : path.join(process.env.GAME_DIR, relativePath);
-    const versionFile = path.join(process.env.STATE_DIR, `${id}.version`);
-    let localVersion = "";
-    if (fs.existsSync(versionFile)) localVersion = fs.readFileSync(versionFile, "utf8").trim();
-    exports.log(`Checking ${id} (${repo}) ... current local: ${localVersion || "NONE"}`);
-    let tag, zipUrl;
-    try {
-        const latest = await exports.getLatestRelease(repo);
-        tag = latest.tag;
-        zipUrl = latest.zipUrl;
-    } catch {
-        exports.log(`WARN: Could not fetch release for ${repo}`);
-        return;
     }
+};
+
+exports.normalizeVersion = (v) => (v ? v.trim().replace(/^v/i, "") : "");
+
+exports.isRemoteNewer = (local, remote) => {
+    const lv = exports.normalizeVersion(local);
+    const rv = exports.normalizeVersion(remote);
+    if (!lv) return true;
+    if (lv === rv) return false;
+    return [lv, rv].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))[1] === rv;
+};
+
+exports.getLatestRelease = async (repo) => {
+    const api = `https://api.github.com/repos/${repo}/releases/latest`;
+    const headers = {
+        Accept: "application/vnd.github+json",
+        "User-Agent": "cp2077-updater",
+    };
+    if (GITHUB_TOKEN) headers.Authorization = `Bearer ${GITHUB_TOKEN}`;
+
+    try {
+        const res = await axios.get(api, { headers, timeout: 15000 });
+        const json = res.data;
+        const tag = json.tag_name || json.name || "";
+        let zipUrl = null;
+        const asset = (json.assets || []).find((a) => a.browser_download_url?.endsWith(".zip"));
+        if (asset) zipUrl = asset.browser_download_url;
+        else if (json.zipball_url) zipUrl = json.zipball_url;
+        return { tag, zipUrl };
+    } catch (err) {
+        console.error("GitHub error:", err.response?.status, err.message);
+        return { tag: null, zipUrl: null };
+    }
+};
+
+exports.downloadFile = async (url, target) => {
+    const headers = GITHUB_TOKEN ? { Authorization: `token ${GITHUB_TOKEN}` } : {};
+    const res = await axios.get(url, { responseType: "arraybuffer", headers });
+    fs.writeFileSync(target, res.data);
+};
+
+exports.runOnce = async () => {
+    const mods = exports.normalizeModsList(process.env.MODS);
+    console.log("Parsed mods:", mods);
+    for (const mod of mods) {
+        await exports.processTool(mod.id, mod.repo, mod.relativePath);
+        await new Promise((r) => setTimeout(r, 1500));
+    }
+};
+
+exports.processTool = async (id, repo, relativePath) => {
+    exports.log(`----- Processing ${id} (${repo})`);
+    const installPath = relativePath ? path.resolve(path.join(GAME_DIR, relativePath)) : path.resolve(GAME_DIR);
+    exports.log(`→ Installing to: ${installPath}`);
+    const versionFile = path.join(STATE_DIR, `${id}.version`);
+    const localVersion = fs.existsSync(versionFile) ? fs.readFileSync(versionFile, "utf8").trim() : "";
+    const { tag, zipUrl } = await exports.getLatestRelease(repo);
     if (!tag || !zipUrl) {
-        exports.log(`WARN: No valid tag or zip for ${repo}`);
+        exports.log(`No release found for ${id}`);
         return;
     }
     if (!exports.isRemoteNewer(localVersion, tag)) {
-        exports.log(`No update for ${id}`);
+        exports.log(`Already up to date: ${id} @ ${localVersion}`);
         return;
     }
-    exports.log(`Update found for ${id}: ${localVersion || "<none>"} -> ${tag}`);
-    const tmpZip = path.join(process.env.TMP_DIR, `${id}_${Date.now()}.zip`);
-    const tmpExtract = path.join(process.env.TMP_DIR, `${id}_${Date.now()}_unzipped`);
+    const tmpZip = path.join(TMP_DIR, `${id}_${Date.now()}.zip`);
+    const tmpExtract = path.join(TMP_DIR, `ext_${id}_${Date.now()}`);
     fs.mkdirSync(tmpExtract, { recursive: true });
     try {
-        exports.log(`Downloading ${repo} -> ${tmpZip}`);
         await exports.downloadFile(zipUrl, tmpZip);
-        exports.log(`Extracting ${id}`);
-        await exports.unzipToTemp(tmpZip, tmpExtract);
-        const entries = fs.readdirSync(tmpExtract); // Determine if zip created a single top-level dir
-        let srcDir = tmpExtract;
-        if (entries.length === 1) {
-            const d = path.join(tmpExtract, entries[0]);
-            if (fs.statSync(d).isDirectory()) srcDir = d;
-        }
-        exports.log(`Merging into ${installPath}`);
-        await exports.mergeInto(srcDir, installPath);
+        new AdmZip(tmpZip).extractAllTo(tmpExtract, true);
+        exports.log(`Extracted ZIP`);
+        const sourceFolder = getModSourceFolder(tmpExtract);
+        exports.log(`Merging folder: ${sourceFolder} → ${installPath}`);
+        exports.copyRecursive(sourceFolder, installPath);
         fs.writeFileSync(versionFile, tag);
-        exports.log(`Updated ${id} -> version ${tag}`);
+        exports.log(`SUCCESS: ${id} → ${tag}`);
     } catch (err) {
-        exports.log(`ERROR processing ${id}: ${err}`);
+        exports.log(`FAILED ${id}: ${err.message}`);
+        console.error(err);
     } finally {
-        try {
-            fs.rmSync(tmpZip, { force: true });
-        } catch {}
-        try {
-            fs.rmSync(tmpExtract, { recursive: true, force: true });
-        } catch {}
+        fs.rmSync(tmpZip, { force: true, recursive: true });
+        fs.rmSync(tmpExtract, { force: true, recursive: true });
     }
 };
