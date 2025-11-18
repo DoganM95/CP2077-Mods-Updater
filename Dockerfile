@@ -1,16 +1,19 @@
-FROM node:alpine
+FROM alpine:3.20
 
-# Set work directory
+# Install Node + npm and create non-root user
+RUN apk add --no-cache nodejs npm && \
+    adduser -D -u 1001 appuser && \
+    rm -rf /var/cache/apk/*
+
 WORKDIR /app
 
-# Copy only the necessary files
-COPY package*.json ./
+# Copy BOTH package files + your source
+COPY package.json package-lock.json* index.js util.js ./
 
-# Install production dependencies only
-RUN npm ci --omit=dev
+# Install exactly what package-lock says (fast + reproducible)
+# Falls back to regular install if no lockfile exists (defensive)
+RUN npm ci --omit=dev 2>/dev/null || \
+    npm install --omit=dev --no-save && \
+    npm cache clean --force
 
-# Copy source files
-COPY index.js util.js ./
-
-# Run command
 CMD ["node", "index.js"]
