@@ -30,11 +30,11 @@ You can run this tool as a docker container like this
 ```powershell
 docker run -d `
   -e GITHUB_TOKEN=gh_abc123 `
-  -e MODS="archivexl,psiberx/cp2077-archive-xl,.
-    tweakxl,psiberx/cp2077-tweak-xl,.
-    cyberenginetweaks,maximegmd/CyberEngineTweaks,.
-    codeware,psiberx/cp2077-codeware,.
-    red4ext,wopss/RED4ext,.
+  -e MODS="archivexl,psiberx/cp2077-archive-xl,. `
+    tweakxl,psiberx/cp2077-tweak-xl,. `
+    cyberenginetweaks,maximegmd/CyberEngineTweaks,. `
+    codeware,psiberx/cp2077-codeware,. `
+    red4ext,wopss/RED4ext,. `
     redscript,jac3km4/redscript,MODS/redscript" `
   -e POLL_INTERVAL=600 `
   -e RUN_ONCE=true `
@@ -42,7 +42,7 @@ docker run -d `
   -v "C:\Games\Cyberpunk 2077\:/game" `
   -v "C:\Games\Cyberpunk 2077\updater\state\:/state" `
   -v "C:\Games\Cyberpunk 2077\updater\tmp\:/tmp" `
-  node-cp2077-updater
+  doganm95/cp2077-mods-updater
 ```
 
 ### Notes
