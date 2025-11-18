@@ -6,6 +6,10 @@ const path = require("node:path");
 const axios = require("axios");
 const AdmZip = require("adm-zip");
 
+const { exec } = require("child_process");
+const sysutil = require("util");
+const execAsync = sysutil.promisify(exec);
+
 const GAME_DIR = process.env.GAME_DIR || "/game";
 const STATE_DIR = process.env.STATE_DIR || "/state";
 const TMP_DIR = process.env.TMP_DIR || "/tmp";
@@ -154,5 +158,21 @@ exports.processTool = async (id, repo, relativePath) => {
     } finally {
         fs.rmSync(tmpZip, { force: true, recursive: true });
         fs.rmSync(tmpExtract, { force: true, recursive: true });
+    }
+};
+
+exports.isWindowsProcessRunning = async (processName = "checkMate.exe") => {
+    try {
+        const { stdout } = await execAsync(`tasklist /FI "IMAGENAME eq ${processName}" /FO CSV`);
+        const lines = stdout.trim().split("\n");
+        if (lines.length > 1) {
+            const runningProcess = lines.slice(1).some((line) => line.toLowerCase().includes(processName.toLowerCase()));
+            return runningProcess;
+        }
+        return false;
+    } catch (err) {
+        if (err.code === 1 && err.stdout === "") return false;
+        console.error("Error checking process:", err);
+        throw err;
     }
 };
