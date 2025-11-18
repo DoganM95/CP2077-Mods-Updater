@@ -11,8 +11,6 @@ const STATE_DIR = process.env.STATE_DIR || "/state";
 const TMP_DIR = process.env.TMP_DIR || "/tmp";
 const POLL_INTERVAL = Number(process.env.POLL_INTERVAL || 3600);
 
-// TODO: add detection whether game is running or not by looking for its executable in processes
-
 if (!fs.existsSync(STATE_DIR)) fs.mkdirSync(STATE_DIR, { recursive: true });
 if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
 
