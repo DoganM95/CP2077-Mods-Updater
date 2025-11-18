@@ -1,4 +1,5 @@
 require("dotenv").config({ path: __dirname + "/.env" });
+require("dotenv").config({ path: __dirname + "/private.env" });
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
