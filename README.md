@@ -1,6 +1,7 @@
-# CP2077-Mod-Updater
+# Intro
 
-A dockerized tool to keep cyberpunk mods always up to date automatically
+A tool to keep cyberpunk game tools/mods that are available as github releases always up to date.
+If you are sick of having to download and unzip the tools every time an update happens, this is for you.
 
 # Setup
 
