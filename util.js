@@ -32,9 +32,9 @@ exports.normalizeModsList = (modsString) => {
     return modsArray;
 };
 
-exports.isRemoteNewer = (localV, remoteV) => {
-    const lv = exports.normalizeVersion(localV);
-    const rv = exports.normalizeVersion(remoteV);
+exports.isRemoteNewer = (localVersion, remoteVersion) => {
+    const lv = exports.normalizeVersion(localVersion);
+    const rv = exports.normalizeVersion(remoteVersion);
     if (!lv) return true;
     if (lv === rv) return false;
     const sorted = [lv, rv].sort((a, b) => {
