@@ -8,8 +8,8 @@ const axios = require("axios");
 const util = require("./util");
 
 const GAME_DIR = process.env.GAME_DIR || "/game";
-const STATE_DIR = process.env.STATE_DIR || "/data/cp2077_updater";
-const TMP_DIR = process.env.TMP_DIR || "/tmp/cp2077_updater";
+const STATE_DIR = process.env.STATE_DIR || "/state";
+const TMP_DIR = process.env.TMP_DIR || "/tmp";
 const POLL_INTERVAL = process.env.POLL_INTERVAL || Number(process.env.POLL_INTERVAL || 3600);
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
 
