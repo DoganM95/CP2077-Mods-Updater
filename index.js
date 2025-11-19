@@ -3,60 +3,35 @@ require("dotenv").config({ path: __dirname + "/private.env" });
 const fs = require("node:fs");
 const util = require("./util");
 
-const GAME_DIR = process.env.GAME_DIR.replaceAll("\\", "/") || "/game";
-const STATE_DIR = process.env.STATE_DIR.replaceAll("\\", "/") || "/state";
-const TMP_DIR = process.env.TMP_DIR.replaceAll("\\", "/") || "/tmp";
+const GAME_DIR = process.env.GAME_DIR?.replaceAll("\\", "/") || "/game";
+const STATE_DIR = process.env.STATE_DIR?.replaceAll("\\", "/") || "/state";
+const TMP_DIR = process.env.TMP_DIR?.replaceAll("\\", "/") || "/tmp";
 const POLL_INTERVAL = Number(process.env.POLL_INTERVAL || 3600);
 
 if (!fs.existsSync(STATE_DIR)) fs.mkdirSync(STATE_DIR, { recursive: true });
 if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
 
-const gameProcessPath = "/bin/x64/Cyberpunk2077.exe"; // Linux path
+const gameProcessPath = "/bin/x64/Cyberpunk2077.exe";
 const gameProcessName = "Cyberpunk2077.exe";
 const fullGameExecutablePath = GAME_DIR + gameProcessPath;
-// const gameProcessName = "firefox.exe"; // For testing
 
 (async () => {
-    if (!util.isDocker()) {
-        util.isWindowsProcessRunning(gameProcessName).then((running) => {
-            console.log(`${gameProcessName} running on host:`, running);
-        });
-    }
-
     if (!fs.existsSync(GAME_DIR)) {
         util.log(`ERROR: GAME_DIR ${GAME_DIR} does not exist. Mount the game folder at /game in Docker.`);
         process.exit(2);
     }
     if (!fs.existsSync(fullGameExecutablePath)) {
-        const lockedFileUnlocked = util.releaseProcessLock(fullGameExecutablePath, fullGameExecutablePath + ".locked_by_updater");
-        const lockedFileTestUnlocked = util.releaseProcessLock(fullGameExecutablePath, fullGameExecutablePath + ".lock_test_by_updater");
-        if (!lockedFileUnlocked && !lockedFileTestUnlocked) {
-            util.log(`ERROR: Executable ${gameProcessName} does not exist. Mount the game folder at /game in Docker & make sure the game is in ${fullGameExecutablePath}.`);
-            process.exit(2);
-        }
+        util.log(`ERROR: Executable ${gameProcessName} does not exist. Mount the game folder at /game in Docker & make sure the game is at ${fullGameExecutablePath}`);
+        process.exit(2);
     }
     util.log(`Starting CP2077 Node.js updater. ${process.env.RUN_ONCE == "true" ? "" : "Poll interval = " + POLL_INTERVAL + "s"}`);
     while (true) {
-        try {
-            const running = util.isProcessRunningByRename(fullGameExecutablePath);
-            console.log("Cyberpunk running:", running);
-        } catch (e) {
-            console.error(e.message);
+        await util.runOnce();
+        if (process.env.RUN_ONCE == "true") {
+            util.log(`Updates complete, exiting.`);
+            process.exit(0);
         }
-        const lockAcquired = util.acquireProcessLock(fullGameExecutablePath); // Prevent app from starting while patching files
-        if (lockAcquired) {
-            console.log("Lock acquired — app cannot start now");
-            await util.runOnce();
-            while (!util.releaseProcessLock(fullGameExecutablePath, lockAcquired)) {
-                console.log("Tryin to unlock the main binary...");
-                await util.sleep(1000);
-            }
-            console.log("Lock released — app can start again");
-            util.log(`Cycle complete. Sleeping ${POLL_INTERVAL}s`);
-            await new Promise((r) => setTimeout(r, POLL_INTERVAL));
-        } else {
-            console.log("App is already running — cannot proceed");
-        }
-        if (process.env.RUN_ONCE == "true") process.exit(0);
+        util.log(`Cycle complete. Sleeping ${POLL_INTERVAL}s`);
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL));
     }
 })();
