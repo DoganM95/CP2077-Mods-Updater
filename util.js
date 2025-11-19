@@ -22,6 +22,8 @@ console.log("TMP_DIR     →", TMP_DIR);
 console.log("GITHUB_TOKEN →", GITHUB_TOKEN ? "present" : "not set");
 console.log();
 
+exports.sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 exports.log = (msg) => console.log(`${new Date().toISOString()} ${msg}`);
 
 exports.isDocker = () => {
@@ -182,5 +184,54 @@ exports.isWindowsProcessRunning = async (processName = "checkMate.exe") => {
         if (err.code === 1 && err.stdout === "") return false;
         console.error("Error checking process:", err);
         throw err;
+    }
+};
+
+// Checks if a process is running by trying to exclusively rename its .exe
+exports.isProcessRunningByRename = (exePath) => {
+    if (!fs.existsSync(exePath)) throw new Error(`Executable not found: ${exePath}`);
+    const tempPath = exePath + ".lock_test_by_updater";
+    try {
+        fs.renameSync(exePath, tempPath); // Try rename
+        fs.renameSync(tempPath, exePath); // Revert original name
+        return false; // Process is NOT running
+    } catch (err) {
+        if (err.code === "EBUSY" || err.code === "EPERM" || err.code === "EACCES") return true; // Process IS running (file locked)
+        throw err; // Any other error (disk full, no permission, etc.) — re-throw
+    }
+};
+
+// Acquires an exclusive lock by renaming the executable to prevent the app from starting while you work on its files
+exports.acquireProcessLock = (exePath) => {
+    const tempPath = exePath + ".locked_by_updater";
+    try {
+        fs.renameSync(exePath, tempPath);
+        return tempPath; // Lock acquired — caller now owns the file
+    } catch (err) {
+        if (err.code === "EBUSY" || err.code === "EPERM" || err.code === "EACCES") {
+            return null; // Already running → cannot lock
+        }
+        throw err;
+    }
+};
+
+// Releases the lock — restores original executable name
+exports.releaseProcessLock = (originalPath, tempPath) => {
+    if (!tempPath || !fs.existsSync(tempPath)) return true;
+    try {
+        fs.renameSync(tempPath, originalPath);
+        return true;
+    } catch (err) {
+        console.warn("Warning: Failed to restore executable name:", err.message);
+        return false;
+    }
+};
+
+exports.fileExists = (path) => {
+    try {
+        fs.accessSync(path, fs.constants.F_OK);
+        return true;
+    } catch {
+        return false;
     }
 };
