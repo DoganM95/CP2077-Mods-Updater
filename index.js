@@ -20,10 +20,6 @@ const fullGameExecutablePath = GAME_DIR + gameProcessPath;
         util.log(`ERROR: GAME_DIR ${GAME_DIR} does not exist. Mount the game folder at /game in Docker.`);
         process.exit(2);
     }
-    if (!fs.existsSync(fullGameExecutablePath)) {
-        util.log(`ERROR: Executable ${gameProcessName} does not exist. Mount the game folder at /game in Docker & make sure the game is at ${fullGameExecutablePath}`);
-        process.exit(2);
-    }
     util.log(`Starting CP2077 Node.js updater. ${process.env.RUN_ONCE == "true" ? "" : "Poll interval = " + POLL_INTERVAL + "s"}`);
     while (true) {
         await util.runOnce();
