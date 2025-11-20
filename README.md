@@ -70,7 +70,7 @@ The container removes itself after its single iteration is complete.
       -v "C:\Games\Cyberpunk 2077\updater\state\:/state" `
       -v "C:\Games\Cyberpunk 2077\updater\tmp\:/tmp" `
       -v "C:\Games\Cyberpunk 2077\mod-zips\:/zips" `
-      doganm95/cp2077-mods-updater
+      ghcr.io/doganm95/cyberpunk-mods-updater:latest
 ```
 
 ### Run periodically
