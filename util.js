@@ -185,6 +185,19 @@ exports.runOnce = async () => {
         await exports.processTool(mod);
         await exports.sleep(1500);
     }
+    if (process.env.LOCAL_ZIPS) {
+        const localLines = process.env.LOCAL_ZIPS.split(/\r?\n/)
+            .map((l) => l.trim())
+            .filter((l) => l && !l.startsWith("#"));
+        if (localLines.length > 0) {
+            console.log();
+            exports.log("Processing LOCAL_ZIPS...");
+            for (const line of localLines) {
+                await exports.processLocalZip(line);
+                await exports.sleep(1000);
+            }
+        }
+    }
     exports.log("All mods processed!");
 };
 
