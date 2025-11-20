@@ -45,6 +45,7 @@ It is recommended to let the updater run on an empty test directory first, e.g. 
 - `-v "...:/game"` defines the absolute path of the game directory
 - `-v "...:/state"`is where installed version informations are stored
 - `-v "...:/tmp"` is where downloaded zips of the mods are stored temporarily
+- `-v "...:/zips"` is where local mod zips are stored, that should be installed (optional omit if not needed)
 
 ### Run Once
 
@@ -68,6 +69,7 @@ The container removes itself after its single iteration is complete.
       -v "C:\Games\Cyberpunk 2077\:/game" `
       -v "C:\Games\Cyberpunk 2077\updater\state\:/state" `
       -v "C:\Games\Cyberpunk 2077\updater\tmp\:/tmp" `
+      -v "C:\Games\Cyberpunk 2077\mod-zips\:/zips" `
       doganm95/cp2077-mods-updater
 ```
 
@@ -93,5 +95,6 @@ The container runs as a daemon in the background and periodically updates tools 
       -v "C:\Program Files (x86)\Steam\steamapps\common\Cyberpunk 2077\:/game" `
       -v "C:\Program Files (x86)\Steam\steamapps\common\Cyberpunk 2077\updater\state\:/state" `
       -v "C:\Program Files (x86)\Steam\steamapps\common\Cyberpunk 2077\updater\tmp\:/tmp" `
+      -v "C:\Program Files (x86)\Steam\steamapps\common\Cyberpunk 2077\mod-zips\:/zips" `
       ghcr.io/doganm95/cyberpunk-mods-updater:latest
 ```
