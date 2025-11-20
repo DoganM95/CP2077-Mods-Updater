@@ -6,7 +6,7 @@ If you are sick of having to download and unzip the tools every time an update h
 # Setup
 
 - Generate a [classic token on github](https://github.com/settings/tokens) with no checkbox checked
-- Copy your cyberpunk game's root directory as path
+- Determine your cyberpunk game's root directory as path, will be needed later in configuration
 - Find your desired mods/tools as github repositories, e.g. <https://github.com/psiberx/cp2077-tweak-xl>
 - Create a list of those, with the following schema per line  
 
