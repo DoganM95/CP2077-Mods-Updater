@@ -25,32 +25,64 @@ If you are sick of having to download and unzip the tools every time an update h
 
 ## Docker
 
-You can run this tool as a docker container like this
+You can run this tool as a docker container as follows
+
+### Notes
+
+- `-e GITHUB_TOKEN=gh_abc123` defines the github token created above (mandatory)
+- `-e MODS="..."` is the list of mods/tools defined earlier (ensure it's formatted as in the example)
+- `-e POLL_INTERVAL=600` defines the time between each iteration in seconds
+- `-e RUN_ONCE=true` defines whether to run the tool only once or as a process
+- `-v "...:/game"` defines the absolute path of the game directory
+- `-v "...:/state"`is where installed version informations are stored
+- `-v "...:/tmp"` is where downloaded zips of the mods are stored temporarily
+
+### Run Once
+
+The container removes itself after its single iteration is complete.  
 
 ```powershell
 docker run -d `
-  -e GITHUB_TOKEN=gh_abc123 `
-  -e MODS="archivexl,psiberx/cp2077-archive-xl,. `
-    tweakxl,psiberx/cp2077-tweak-xl,. `
-    cyberenginetweaks,maximegmd/CyberEngineTweaks,. `
-    codeware,psiberx/cp2077-codeware,. `
-    red4ext,wopss/RED4ext,. `
-    redscript,jac3km4/redscript,MODS/redscript" `
-  -e POLL_INTERVAL=600 `
+  -e GITHUB_TOKEN=ghp_abc123 `
+  -e MODS="
+  jac3km4/redscript,.,redscript.*-windows\.zip$
+  wopss/RED4ext,.,^red4ext_[^_]+?\.zip$
+  maximegmd/CyberEngineTweaks,.,^cet_.*\.zip$
+  psiberx/cp2077-codeware,.,^Codeware-.*\.zip$
+  psiberx/cp2077-archive-xl,.,^ArchiveXL-.*\.zip$
+  psiberx/cp2077-tweak-xl,.,^TweakXL-.*\.zip$
+  " `
   -e RUN_ONCE=true `
-  --restart unless-stopped `
+  --name cyberpunk-mods-updater `
+  --pull always `
+  --restart no `
   -v "C:\Games\Cyberpunk 2077\:/game" `
   -v "C:\Games\Cyberpunk 2077\updater\state\:/state" `
   -v "C:\Games\Cyberpunk 2077\updater\tmp\:/tmp" `
   doganm95/cp2077-mods-updater
 ```
 
-### Notes
+### Run periodically
 
-- `-e GITHUB_TOKEN=gh_abc123` defines the github token created above (necessary)
-- `-e MODS="..."` is the list of mods/tools defined earlier (endure it's formatted as in the example)
-- `-e POLL_INTERVAL=600` defines the time between each check in seconds
-- `-e RUN_ONCE=true` defines whether to run the tool only once or as a process
-- `-v "...:/game"` defines the absolute path of the game directory
-- `-v "...:/state"`is where installed version informations are stored
-- `-v "...:/tmp"` is where downloaded zips of the mods are stored temporarily
+The container runs as a daemon in the background and periodically updates tools with new versions.
+
+```powershell
+docker run -d `
+    -e GITHUB_TOKEN=ghp_abc123 `
+    -e MODS="
+    jac3km4/redscript,.,redscript.*-windows\.zip$
+    wopss/RED4ext,.,^red4ext_[^_]+?\.zip$
+    maximegmd/CyberEngineTweaks,.,^cet_.*\.zip$
+    psiberx/cp2077-codeware,.,^Codeware-.*\.zip$
+    psiberx/cp2077-archive-xl,.,^ArchiveXL-.*\.zip$
+    psiberx/cp2077-tweak-xl,.,^TweakXL-.*\.zip$
+    " `
+    -e POLL_INTERVAL=600 `
+    --name cyberpunk-mods-updater `
+    --pull always `
+    --restart unless-stopped `
+    -v "C:\Program Files (x86)\Steam\steamapps\common\Cyberpunk 2077\:/game" `
+    -v "C:\Program Files (x86)\Steam\steamapps\common\Cyberpunk 2077\updater\state\:/state" `
+    -v "C:\Program Files (x86)\Steam\steamapps\common\Cyberpunk 2077\updater\tmp\:/tmp" `
+    ghcr.io/doganm95/cyberpunk-mods-updater:latest
+```
