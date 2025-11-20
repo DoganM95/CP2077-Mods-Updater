@@ -8,6 +8,7 @@ const AdmZip = require("adm-zip");
 const GAME_DIR = process.env.GAME_DIR?.replaceAll("\\", "/") || "/game";
 const STATE_DIR = process.env.STATE_DIR?.replaceAll("\\", "/") || "/state";
 const TMP_DIR = process.env.TMP_DIR?.replaceAll("\\", "/") || "/tmp";
+const ZIPS_DIR = process.env.ZIPS_DIR?.replaceAll("\\", "/") || "/zips";
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
 
 console.log("ENVIRONMENT:");

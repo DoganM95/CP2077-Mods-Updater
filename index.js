@@ -6,6 +6,7 @@ const util = require("./util");
 const GAME_DIR = process.env.GAME_DIR?.replaceAll("\\", "/") || "/game";
 const STATE_DIR = process.env.STATE_DIR?.replaceAll("\\", "/") || "/state";
 const TMP_DIR = process.env.TMP_DIR?.replaceAll("\\", "/") || "/tmp";
+const ZIPS_DIR = process.env.ZIPS_DIR?.replaceAll("\\", "/") || "/zips";
 const POLL_INTERVAL = Number(process.env.POLL_INTERVAL || 3600);
 
 if (!fs.existsSync(STATE_DIR)) fs.mkdirSync(STATE_DIR, { recursive: true });
@@ -16,6 +17,7 @@ const gameProcessName = "Cyberpunk2077.exe";
 const fullGameExecutablePath = GAME_DIR + gameProcessPath;
 
 (async () => {
+    if (!fs.existsSync(ZIPS_DIR)) fs.mkdirSync(ZIPS_DIR, { recursive: true });
     if (!fs.existsSync(GAME_DIR)) {
         util.log(`ERROR: GAME_DIR ${GAME_DIR} does not exist. Mount the game folder at /game in Docker.`);
         process.exit(2);
