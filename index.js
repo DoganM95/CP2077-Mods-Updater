@@ -17,7 +17,6 @@ const gameProcessName = "Cyberpunk2077.exe";
 const fullGameExecutablePath = GAME_DIR + gameProcessPath;
 
 (async () => {
-    if (!fs.existsSync(ZIPS_DIR)) fs.mkdirSync(ZIPS_DIR, { recursive: true });
     if (!fs.existsSync(GAME_DIR)) {
         util.log(`ERROR: GAME_DIR ${GAME_DIR} does not exist. Mount the game folder at /game in Docker.`);
         process.exit(2);

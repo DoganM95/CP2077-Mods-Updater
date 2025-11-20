@@ -262,7 +262,7 @@ exports.runOnce = async () => {
         await exports.processTool(mod);
         await exports.sleep(1500);
     }
-    if (process.env.INSTALL_LOCAL_ZIPS == "true") await processLocalZips(); // ← This is the only new line you need
+    await processLocalZips(); // ← This is the only new line you need
     exports.log("-------------");
     exports.log("All mods processed!");
 };
