@@ -28,6 +28,6 @@ const fullGameExecutablePath = GAME_DIR + gameProcessPath;
             process.exit(0);
         }
         util.log(`Cycle complete. Sleeping ${POLL_INTERVAL}s`);
-        await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+        await util.sleep(POLL_INTERVAL * 1000);
     }
 })();
