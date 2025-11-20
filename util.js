@@ -187,3 +187,60 @@ exports.runOnce = async () => {
     }
     exports.log("All mods processed!");
 };
+
+exports.processLocalZip = async (line) => {
+    const parts = line.split(",").map((p) => p.trim());
+    if (!parts[0]) return;
+    const pattern = parts[0];
+    const relativePathRaw = parts[1] || "";
+    const relativePath = relativePathRaw
+        .replace(/[\r\n\t\s]/g, "")
+        .replace(/^[.\\\/]+/, "")
+        .replace(/[.\\\/]+$/, "");
+    const installPath = relativePath ? path.resolve(path.join(GAME_DIR, relativePath)) : path.resolve(GAME_DIR);
+    const safePattern = pattern.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const versionFile = path.join(STATE_DIR, `localzip_${safePattern}.version`);
+    let files;
+    try {
+        files = fs.readdirSync(ZIPS_DIR).filter((f) => f.toLowerCase().endsWith(".zip")); // Find matching ZIPs in /zips
+    } catch (e) {
+        exports.log(`Cannot read ZIPS_DIR ${ZIPS_DIR}`);
+        return;
+    }
+    let regex;
+    try {
+        regex = new RegExp(pattern, "i");
+    } catch (e) {
+        exports.log(`Invalid regex in LOCAL_ZIPS: "${pattern}" → skipping`);
+        return;
+    }
+    const matchingZips = files.filter((f) => regex.test(f));
+    if (matchingZips.length === 0) {
+        exports.log(`No local ZIP matched "${pattern}" in ${ZIPS_DIR}`);
+        return;
+    }
+    for (const zipName of matchingZips) {
+        const zipPath = path.join(ZIPS_DIR, zipName);
+        let newVersion = zipName.replace(/\.zip$/i, "").replace(/^v/i, ""); // Extract version from filename (best effort)
+        const localVersion = fs.existsSync(versionFile) ? fs.readFileSync(versionFile, "utf8").trim() : ""; // Check if we already have this version
+        if (localVersion && localVersion === newVersion) {
+            exports.log(`Local ZIP up to date: ${zipName} → v${newVersion}`);
+            continue;
+        }
+        const tmpExtract = path.join(TMP_DIR, `local_${safePattern}_${Date.now()}`);
+        fs.mkdirSync(tmpExtract, { recursive: true });
+        try {
+            exports.log(`Installing local: ${zipName} → ${relativePath || "(root)"}`);
+            new AdmZip(zipPath).extractAllTo(tmpExtract, true);
+            const source = getModSourceFolder(tmpExtract);
+            exports.copyRecursive(source, installPath);
+            fs.writeFileSync(versionFile, newVersion);
+            exports.log(`SUCCESS local ZIP: ${zipName} → v${newVersion}`);
+        } catch (err) {
+            exports.log(`FAILED local ZIP ${zipName}: ${err.message}`);
+            console.error(err);
+        } finally {
+            fs.rmSync(tmpExtract, { recursive: true, force: true });
+        }
+    }
+};
