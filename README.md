@@ -33,7 +33,8 @@ If you are sick of having to download and unzip the tools every time an update h
 
 ## Docker
 
-You can run this tool as a docker container as follows
+You can run this tool as a docker container as follows.
+It is recommended to let the updater run on an empty test directory first, e.g. `C:\Test` to see if it installs everything just as expected, before using it on the game directory.
 
 ### Notes
 
@@ -53,12 +54,12 @@ The container removes itself after its single iteration is complete.
     docker run -d `
       -e GITHUB_TOKEN=ghp_abc123 `
       -e MODS="
-      jac3km4/redscript,.,redscript.*-windows\.zip$
-      wopss/RED4ext,.,^red4ext_[^_]+?\.zip$
-      maximegmd/CyberEngineTweaks,.,^cet_.*\.zip$
-      psiberx/cp2077-codeware,.,^Codeware-.*\.zip$
-      psiberx/cp2077-archive-xl,.,^ArchiveXL-.*\.zip$
-      psiberx/cp2077-tweak-xl,.,^TweakXL-.*\.zip$
+        jac3km4/redscript,.,redscript.*-windows\.zip$
+        wopss/RED4ext,.,^red4ext_[^_]+?\.zip$
+        maximegmd/CyberEngineTweaks,.,^cet_.*\.zip$
+        psiberx/cp2077-codeware,.,^Codeware-.*\.zip$
+        psiberx/cp2077-archive-xl,.,^ArchiveXL-.*\.zip$
+        psiberx/cp2077-tweak-xl,.,^TweakXL-.*\.zip$
       " `
       -e RUN_ONCE=true `
       --name cyberpunk-mods-updater `
@@ -76,21 +77,21 @@ The container runs as a daemon in the background and periodically updates tools 
 
 ```powershell
     docker run -d `
-        -e GITHUB_TOKEN=ghp_abc123 `
-        -e MODS="
+      -e GITHUB_TOKEN=ghp_abc123 `
+      -e MODS="
         jac3km4/redscript,.,redscript.*-windows\.zip$
         wopss/RED4ext,.,^red4ext_[^_]+?\.zip$
         maximegmd/CyberEngineTweaks,.,^cet_.*\.zip$
         psiberx/cp2077-codeware,.,^Codeware-.*\.zip$
         psiberx/cp2077-archive-xl,.,^ArchiveXL-.*\.zip$
         psiberx/cp2077-tweak-xl,.,^TweakXL-.*\.zip$
-        " `
-        -e POLL_INTERVAL=600 `
-        --name cyberpunk-mods-updater `
-        --pull always `
-        --restart unless-stopped `
-        -v "C:\Program Files (x86)\Steam\steamapps\common\Cyberpunk 2077\:/game" `
-        -v "C:\Program Files (x86)\Steam\steamapps\common\Cyberpunk 2077\updater\state\:/state" `
-        -v "C:\Program Files (x86)\Steam\steamapps\common\Cyberpunk 2077\updater\tmp\:/tmp" `
-        ghcr.io/doganm95/cyberpunk-mods-updater:latest
+      " `
+      -e POLL_INTERVAL=600 `
+      --name cyberpunk-mods-updater `
+      --pull always `
+      --restart unless-stopped `
+      -v "C:\Program Files (x86)\Steam\steamapps\common\Cyberpunk 2077\:/game" `
+      -v "C:\Program Files (x86)\Steam\steamapps\common\Cyberpunk 2077\updater\state\:/state" `
+      -v "C:\Program Files (x86)\Steam\steamapps\common\Cyberpunk 2077\updater\tmp\:/tmp" `
+      ghcr.io/doganm95/cyberpunk-mods-updater:latest
 ```
