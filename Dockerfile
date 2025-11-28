@@ -1,7 +1,7 @@
 FROM alpine:latest
 
 # Install Node + npm and create non-root user
-RUN apk add --no-cache nodejs npm && \
+RUN apk add --no-cache nodejs npm 7zip libc6-compat && \
     rm -rf /var/cache/apk/*
 
 WORKDIR /app
