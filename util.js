@@ -4,26 +4,22 @@ const fs = require("node:fs");
 const path = require("node:path");
 const axios = require("axios");
 const AdmZip = require("adm-zip");
-
+const _7z = require("7zip-min");
 const GAME_DIR = process.env.GAME_DIR?.replaceAll("\\", "/") || "/game";
 const STATE_DIR = process.env.STATE_DIR?.replaceAll("\\", "/") || "/state";
 const TMP_DIR = process.env.TMP_DIR?.replaceAll("\\", "/") || "/tmp";
 const ZIPS_DIR = process.env.ZIPS_DIR?.replaceAll("\\", "/") || "/zips";
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
-
 console.log("ENVIRONMENT:");
 console.log("GAME_DIR:", GAME_DIR);
 console.log("STATE_DIR:", STATE_DIR);
 console.log("TMP_DIR:", TMP_DIR);
 console.log("GITHUB_TOKEN:", GITHUB_TOKEN ? "present" : "not set");
 console.log();
-
 exports.sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 exports.log = (msg) => console.log(`${new Date().toISOString()} ${msg}`);
-
 exports.normalizeModsList = (modsString) => {
     if (!modsString) return [];
-
     return modsString
         .split(/\r?\n/)
         .map((l) => l.trim())
@@ -37,14 +33,14 @@ exports.normalizeModsList = (modsString) => {
             if (repo === "jac3km4/redscript") {
                 regexStr = regexStr || "^redscript.*\\.zip$"; // never accept source zipball
             } else {
-                regexStr = regexStr || ".*\\.zip$";
+                regexStr = regexStr || ".*\\.(zip|rar|7z|tar\\.gz|gz|tgz)$";
             }
             let assetRegex;
             try {
                 assetRegex = new RegExp(regexStr, "i");
             } catch (e) {
-                console.warn(`Invalid regex "${regexStr}" for ${repo} → using .*\.zip$`);
-                assetRegex = /.*\.zip$/i;
+                console.warn(`Invalid regex "${regexStr}" for ${repo} → using .*\.(zip|rar|7z|tar\.gz|gz|tgz)$`);
+                assetRegex = /\.(zip|rar|7z|tar\.gz|gz|tgz)$/i;
             }
             const relativePath = relativePathRaw
                 .replace(/[\r\n\t\s]/g, "")
@@ -54,11 +50,9 @@ exports.normalizeModsList = (modsString) => {
         })
         .filter(Boolean);
 };
-
 function getModSourceFolder(extractDir) {
     return extractDir; // Return root of extracted ZIP
 }
-
 exports.copyRecursive = (extractedFolder, dest) => {
     const entries = fs.readdirSync(extractedFolder, { withFileTypes: true });
     for (const entry of entries) {
@@ -77,11 +71,9 @@ exports.copyRecursive = (extractedFolder, dest) => {
         }
     }
 };
-
 exports.createDirRecursive = (dir) => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 };
-
 exports.normalizeVersion = (v) => (v ? v.trim().replace(/^v/i, "") : "");
 exports.isRemoteNewer = (local, remote) => {
     const lv = exports.normalizeVersion(local);
@@ -90,7 +82,6 @@ exports.isRemoteNewer = (local, remote) => {
     if (lv === rv) return false;
     return [lv, rv].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))[1] === rv;
 };
-
 exports.getLatestRelease = async (repo, assetRegex) => {
     const api = `https://api.github.com/repos/${repo}/releases/latest`;
     const headers = {
@@ -122,13 +113,11 @@ exports.getLatestRelease = async (repo, assetRegex) => {
         return { tag: null, zipUrls: [] };
     }
 };
-
 exports.downloadFile = async (url, target) => {
     const headers = GITHUB_TOKEN ? { Authorization: `token ${GITHUB_TOKEN}` } : {};
     const res = await axios.get(url, { responseType: "arraybuffer", headers, timeout: 90000 });
     fs.writeFileSync(target, res.data);
 };
-
 exports.processTool = async (mod) => {
     const { repo, relativePath, assetRegex } = mod;
     exports.log("-----");
@@ -153,17 +142,17 @@ exports.processTool = async (mod) => {
         for (let i = 0; i < zipUrls.length; i++) {
             const url = zipUrls[i];
             const filename = path.basename(url.split("?")[0]);
-            const tmpZip = path.join(TMP_DIR, `${safeRepoName}_${i}_${Date.now()}.zip`);
+            const tmpArchive = path.join(TMP_DIR, `${safeRepoName}_${i}_${Date.now()}.${path.extname(filename) || "zip"}`);
             const tmpExtract = path.join(tmpBase, `sub_${i}`);
             fs.mkdirSync(tmpExtract, { recursive: true });
             exports.log(`Downloading [${i + 1}/${zipUrls.length}] ${filename}`);
-            await exports.downloadFile(url, tmpZip);
+            await exports.downloadFile(url, tmpArchive);
             exports.log(`Extracting ${filename}`);
-            new AdmZip(tmpZip).extractAllTo(tmpExtract, true);
+            await exports.extractArchive(tmpArchive, tmpExtract);
             const source = getModSourceFolder(tmpExtract);
             exports.log(`Merging from → ${path.relative(process.cwd(), source)}`);
             exports.copyRecursive(source, installPath);
-            fs.rmSync(tmpZip, { force: true, recursive: true });
+            fs.rmSync(tmpArchive, { force: true, recursive: true });
             fs.rmSync(tmpExtract, { force: true, recursive: true });
         }
         fs.writeFileSync(versionFile, tag);
@@ -175,17 +164,39 @@ exports.processTool = async (mod) => {
         fs.rmSync(tmpBase, { force: true, recursive: true });
     }
 };
-
+exports.extractArchive = async (archivePath, extractDir) => {
+    const ext = path.extname(archivePath).toLowerCase().slice(1);
+    let args = [];
+    switch (ext) {
+        case "zip":
+            new AdmZip(archivePath).extractAllTo(extractDir, true);
+            return;
+        // case "rar":
+        case "7z":
+        case "gz":
+        case "tgz":
+            args = ["x", path.resolve(archivePath), "-o" + path.resolve(extractDir), "-y"];
+            break;
+        default:
+            throw new Error(`Unsupported archive format: ${ext}`);
+    }
+    return new Promise((resolve, reject) => {
+        _7z.cmd(args, (err) => {
+            if (err) reject(err);
+            else resolve();
+        });
+    });
+};
 const processLocalZips = async () => {
     if (!fs.existsSync(ZIPS_DIR)) {
-        exports.log(`ZIPS_DIR ${ZIPS_DIR} does not exist → skipping local ZIPs`);
+        exports.log(`ZIPS_DIR ${ZIPS_DIR} does not exist → skipping local archives`);
         return;
     }
     exports.log("-------------");
     let candidates = fs
         .readdirSync(ZIPS_DIR)
-        .filter((f) => /\.zip$/i.test(f))
-        .map((f) => ({ zipName: f, relativePath: "" })); // default: root
+        .filter((f) => /\.(zip|rar|7z|tar\.gz|gz|tgz)$/i.test(f))
+        .map((f) => ({ archiveName: f, relativePath: "" })); // default: root
     if (process.env.LOCAL_ZIPS) {
         const lines = process.env.LOCAL_ZIPS.split(/\r?\n/)
             .map((l) => l.trim())
@@ -208,50 +219,49 @@ const processLocalZips = async () => {
             }
             const matching = fs
                 .readdirSync(ZIPS_DIR)
-                .filter((f) => /\.zip$/i.test(f) && regex.test(f))
-                .map((f) => ({ zipName: f, relativePath: relPath }));
+                .filter((f) => /\.(zip|rar|7z|tar\.gz|gz|tgz)$/i.test(f) && regex.test(f))
+                .map((f) => ({ archiveName: f, relativePath: relPath }));
             candidates.push(...matching);
         }
         if (candidates.length === 0) {
-            exports.log("No local ZIPs matched LOCAL_ZIPS patterns");
+            exports.log("No local archives matched LOCAL_ZIPS patterns");
             return;
         }
     }
     if (candidates.length === 0) {
-        exports.log("No local ZIPs found in /zips");
+        exports.log("No local archives found in /zips");
         return;
     }
-    exports.log(`Found ${candidates.length} local ZIP(s) to process`);
-    for (const { zipName, relativePath } of candidates) {
-        const zipPath = path.join(ZIPS_DIR, zipName);
+    exports.log(`Found ${candidates.length} local archive(s) to process`);
+    for (const { archiveName, relativePath } of candidates) {
+        exports.log("-----");
+        const archivePath = path.join(ZIPS_DIR, archiveName);
         const installPath = relativePath ? path.resolve(path.join(GAME_DIR, relativePath)) : path.resolve(GAME_DIR);
-        const remoteVersion = zipName.replace(/\.zip$/i, "").replace(/^v/i, ""); // Version = filename without .zip and leading v
-        const versionFile = path.join(STATE_DIR, `${zipName}.version`);
+        const remoteVersion = archiveName.replace(/\.(zip|rar|7z|tar\.gz|gz|tgz)$/i, "").replace(/^v/i, ""); // Version = filename without extension and leading v
+        const versionFile = path.join(STATE_DIR, `${archiveName}.version`);
         const localVersion = fs.existsSync(versionFile) ? fs.readFileSync(versionFile, "utf8").trim() : "";
         if (localVersion === remoteVersion) {
-            exports.log(`Local ZIP up to date: ${zipName} @ ${remoteVersion}`);
+            exports.log(`Local archive up to date: ${archiveName} @ ${remoteVersion}`);
             continue;
         }
         const tmpExtract = path.join(TMP_DIR, `local_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`);
         fs.mkdirSync(tmpExtract, { recursive: true });
         try {
-            exports.log("-----");
-            exports.log(`Installing local: ${zipName} → ${relativePath || "(root)"}`);
-            new AdmZip(zipPath).extractAllTo(tmpExtract, true);
+            exports.log(`Installing local: ${archiveName} → ${relativePath || "(root)"}`);
+            await exports.extractArchive(archivePath, tmpExtract);
             const source = getModSourceFolder(tmpExtract);
             exports.copyRecursive(source, installPath);
             fs.writeFileSync(versionFile, remoteVersion);
-            exports.log(`SUCCESS local ZIP: ${zipName} → ${remoteVersion}`);
+            exports.log(`SUCCESS local archive: ${archiveName} → ${remoteVersion}`);
         } catch (err) {
-            exports.log(`FAILED local ZIP ${zipName}: ${err.message}`);
-            console.error(err);
+            exports.log(`${err.message.includes("Unsupported") ? "SKIPPED" : "FAILED"} local archive ${archiveName}: ${err.message}`);
+            // console.error(err);
         } finally {
             fs.rmSync(tmpExtract, { recursive: true, force: true });
         }
         await exports.sleep(1000);
     }
 };
-
 // Insert this call at the very end of runOnce(), right before the final log
 exports.runOnce = async () => {
     const mods = exports.normalizeModsList(process.env.MODS);
