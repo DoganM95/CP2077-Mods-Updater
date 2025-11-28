@@ -21,6 +21,7 @@ console.log("GITHUB_TOKEN:", GITHUB_TOKEN ? "present" : "not set");
 console.log();
 
 exports.sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 exports.log = (msg) => console.log(`${new Date().toISOString()} ${msg}`);
 
 exports.normalizeModsList = (modsString) => {
@@ -56,10 +57,6 @@ exports.normalizeModsList = (modsString) => {
         .filter(Boolean);
 };
 
-function getModSourceFolder(extractDir) {
-    return extractDir;
-}
-
 exports.copyRecursive = (extractedFolder, dest) => {
     const entries = fs.readdirSync(extractedFolder, { withFileTypes: true });
     for (const entry of entries) {
@@ -84,6 +81,7 @@ exports.createDirRecursive = (dir) => {
 };
 
 exports.normalizeVersion = (v) => (v ? v.trim().replace(/^v/i, "") : "");
+
 exports.isRemoteNewer = (local, remote) => {
     const lv = exports.normalizeVersion(local);
     const rv = exports.normalizeVersion(remote);
@@ -160,8 +158,8 @@ exports.processTool = async (mod) => {
             exports.log(`Downloading [${i + 1}/${zipUrls.length}] ${filename}`);
             await exports.downloadFile(url, tmpArchive);
             exports.log(`Extracting ${filename}`);
-            await extractArchive(tmpArchive, tmpExtract);
-            const source = getModSourceFolder(tmpExtract);
+            await exports.extractArchive(tmpArchive, tmpExtract);
+            const source = tmpExtract;
             exports.log(`Merging from → ${path.relative(process.cwd(), source)}`);
             exports.copyRecursive(source, installPath);
             fs.rmSync(tmpArchive, { force: true, recursive: true });
@@ -181,14 +179,11 @@ exports.extractArchive = async (src, dest) => {
     const absSrc = path.resolve(src);
     const absDest = path.resolve(dest);
     const ext = path.extname(src).toLowerCase();
-
     fs.mkdirSync(absDest, { recursive: true });
-
     if (ext === ".zip") {
         new AdmZip(absSrc).extractAllTo(absDest, true);
         return;
     }
-
     if (ext === ".7z" || ext === ".tar.gz" || ext === ".tgz" || ext === ".gz") {
         return new Promise((resolve, reject) => {
             const extractor = Seven.extractFull(absSrc, absDest, { $progress: false });
@@ -196,26 +191,20 @@ exports.extractArchive = async (src, dest) => {
             extractor.on("error", reject);
         });
     }
-
     if (ext === ".rar") {
         return new Promise((resolve, reject) => {
             // redirect all unrar output to /dev/null
-            const child = spawn("unrar", ["x", "-o+", absSrc, absDest], {
-                stdio: ["ignore", "ignore", "pipe"], // ignore stdin/stdout, keep stderr for errors
-            });
-
+            const child = spawn("unrar", ["x", "-o+", absSrc, absDest], { stdio: ["ignore", "ignore", "pipe"] }); // ignore stdin/stdout, keep stderr for errors
             let errData = "";
             child.stderr.on("data", (chunk) => {
                 errData += chunk.toString();
             });
-
             child.on("close", (code) => {
                 if (code === 0) resolve();
                 else reject(new Error(`unrar exited with code ${code}\n${errData}`));
             });
         });
     }
-
     throw new Error(`Unsupported archive type: ${ext}`);
 };
 
@@ -281,7 +270,7 @@ const processLocalZips = async () => {
         try {
             exports.log(`Installing local: ${archiveName} → ${relativePath || "(root)"}`);
             await exports.extractArchive(archivePath, tmpExtract);
-            const source = getModSourceFolder(tmpExtract);
+            const source = tmpExtract;
             exports.copyRecursive(source, installPath);
             fs.writeFileSync(versionFile, remoteVersion);
             exports.log(`SUCCESS local archive: ${archiveName} → ${remoteVersion}`);
