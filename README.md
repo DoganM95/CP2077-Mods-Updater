@@ -1,7 +1,17 @@
 # Intro
 
-A tool to keep cyberpunk game tools/mods that are available as github releases always up to date.
-If you are sick of having to download and unzip the tools every time an update happens, this is for you.
+A tool to keep cyberpunk 2077 game tools/mods always up to date.
+
+# Features
+
+- Runs as a docker container
+- Is independent from the game's version, just a file/mod manager
+- Can either run periodically or once and delete its own container
+- Supports updating mods using github repositories (e.g. wopss/RED4ext) and regex patterns to recognize the zip to get from releases
+- Supports local archives (zip, 7z, rar, etc) by listening for new files in the specified folder
+- Keeps track of the mods it installed and their versions
+- Writes its actions to the docker container console, for easy debugging & troubleshooting
+- May provide the fatest way to reinstall all your mods after a fresh install / reset of the game
 
 # Setup
 
