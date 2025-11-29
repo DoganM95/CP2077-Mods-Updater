@@ -21,7 +21,7 @@ A tool to keep cyberpunk 2077 game tools/mods always up to date.
 - Create a list of those, with the following schema per line  
 
   ```shell
-      githubDeveloperName/repositoryName,regexPatternForReleaseFileToUse
+      githubDeveloperName/repositoryName,folderToUnzipIn,regexPatternForReleaseFileToUse
   ```
 
 - Example mods list
