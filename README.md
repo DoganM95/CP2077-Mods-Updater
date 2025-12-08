@@ -38,8 +38,9 @@ A tool to keep cyberpunk 2077 game tools/mods always up to date.
   ```
 
   - The contents of the mod zip will be merged into the root of the game directory
-  - Specifying a subdirectory will make sure it is extracted in that sub-dir,  
-    e.g. folderToUse being `MODS/redscript`will extract the zip contents into `...\Cyberpunk 2077\MODS\redscript\`
+  - Specifying a subdirectory will make sure it is extracted in that sub-dir, relative to the mounted dir. 
+    E.g. `folderToUnzipTheArchiveIn` being `MODS/redscript`will extract the zip contents into `...\Cyberpunk 2077\MODS\redscript\`, with this line:
+    `jac3km4/redscript,MODS/redscript,redscript.*-windows\.zip$`
 
 ## Docker
 
