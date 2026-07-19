@@ -29,7 +29,7 @@ A tool to keep cyberpunk 2077 game tools/mods always up to date.
   ```shell
       MODS="
       jac3km4/redscript,.,redscript.*-windows\.zip$
-      wopss/RED4ext,.,^red4ext_[^_]+?\.zip$
+      wopss/RED4ext,.,^red4ext-\d[^-]*\.zip$
       maximegmd/CyberEngineTweaks,.,^cet_.*\.zip$
       psiberx/cp2077-codeware,.,^Codeware-.*\.zip$
       psiberx/cp2077-archive-xl,.,^ArchiveXL-.*\.zip$
@@ -67,7 +67,7 @@ The container removes itself after its single iteration is complete.
       -e GITHUB_TOKEN=ghp_abc123 `
       -e MODS="
         jac3km4/redscript,.,redscript.*-windows\.zip$
-        wopss/RED4ext,.,^red4ext_[^_]+?\.zip$
+        wopss/RED4ext,.,^red4ext-\d[^-]*\.zip$
         maximegmd/CyberEngineTweaks,.,^cet_.*\.zip$
         psiberx/cp2077-codeware,.,^Codeware-.*\.zip$
         psiberx/cp2077-archive-xl,.,^ArchiveXL-.*\.zip$
@@ -93,7 +93,7 @@ The container runs as a daemon in the background and periodically updates tools 
       -e GITHUB_TOKEN=ghp_abc123 `
       -e MODS="
         jac3km4/redscript,.,redscript.*-windows\.zip$
-        wopss/RED4ext,.,^red4ext_[^_]+?\.zip$
+        wopss/RED4ext,.,^red4ext-\d[^-]*\.zip$
         maximegmd/CyberEngineTweaks,.,^cet_.*\.zip$
         psiberx/cp2077-codeware,.,^Codeware-.*\.zip$
         psiberx/cp2077-archive-xl,.,^ArchiveXL-.*\.zip$
