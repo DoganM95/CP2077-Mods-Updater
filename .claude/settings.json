@@ -1,0 +1,15 @@
+{
+    "permissions": {
+        "deny": [
+            "Read(**/*.env*)",
+            "Read(**/*.key)",
+            "Read(**/*.pem)",
+            "Read(**/*private**)",
+            "Read(**/credentials.*)",
+            "Read(**/docker-compose.yml)",
+            "Read(**/id_rsa*)",
+            "Read(**/secrets.*)",
+            "Read(**/secrets/**)"
+        ]
+    }
+}
